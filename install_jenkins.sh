@@ -208,3 +208,4 @@ echo "🌐 访问地址： http://${IP}:8080"
 echo ""
 echo "🔑 初始管理员密码："
 $SUDO cat /var/lib/jenkins/secrets/initialAdminPassword
+
