@@ -1,0 +1,62 @@
+#!/bin/bash
+set -e
+
+# 变量
+PROM_VERSION="3.11.3"
+PROM_USER="prometheus"
+INSTALL_DIR="/opt/prometheus"
+DOWNLOAD_URL="https://github.com/prometheus/prometheus/releases/download/v${PROM_VERSION}/prometheus-${PROM_VERSION}.linux-amd64.tar.gz"
+
+# 1. 安装依赖
+echo "安装依赖..."
+sudo apt-get update
+sudo apt-get install -y wget tar
+
+# 2. 创建 Prometheus 用户
+if ! id -u $PROM_USER > /dev/null 2>&1; then
+    echo "创建用户 $PROM_USER ..."
+    sudo useradd --no-create-home --shell /bin/false $PROM_USER
+fi
+
+# 3. 下载 Prometheus
+echo "下载 Prometheus ${PROM_VERSION}..."
+wget $DOWNLOAD_URL -O /tmp/prometheus.tar.gz
+
+# 4. 解压
+echo "解压..."
+sudo mkdir -p $INSTALL_DIR
+sudo tar -xzf /tmp/prometheus.tar.gz -C /tmp
+sudo cp -r /tmp/prometheus-${PROM_VERSION}.linux-amd64/* $INSTALL_DIR/
+
+# 5. 设置权限
+sudo chown -R $PROM_USER:$PROM_USER $INSTALL_DIR
+
+# 6. 创建 systemd 服务
+echo "创建 systemd 服务..."
+SERVICE_FILE="/etc/systemd/system/prometheus.service"
+sudo tee $SERVICE_FILE > /dev/null <<EOF
+[Unit]
+Description=Prometheus Monitoring
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=$PROM_USER
+Group=$PROM_USER
+Type=simple
+ExecStart=$INSTALL_DIR/prometheus \\
+    --config.file=$INSTALL_DIR/prometheus.yml \\
+    --storage.tsdb.path=$INSTALL_DIR/data
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# 7. 启动服务
+echo "启动 Prometheus 服务..."
+sudo systemctl daemon-reload
+sudo systemctl enable prometheus
+sudo systemctl start prometheus
+
+echo "安装完成，Prometheus 正在运行..."
+echo "访问：http://<你的服务器IP>:9090"
