@@ -1,0 +1,29 @@
+#!/bin/bash
+set -e
+
+# 变量
+GRAFANA_VERSION="13.0.1+security-01"
+DEB_FILE="grafana-enterprise_${GRAFANA_VERSION}_25720641773_linux_amd64.deb"
+DOWNLOAD_URL="https://dl.grafana.com/grafana-enterprise/release/${DEB_FILE}"
+
+# 1. 安装依赖
+echo "安装依赖..."
+sudo apt-get update
+sudo apt-get install -y adduser libfontconfig1 musl wget
+
+# 2. 下载 Grafana Enterprise
+echo "下载 Grafana Enterprise ${GRAFANA_VERSION}..."
+wget $DOWNLOAD_URL -O /tmp/$DEB_FILE
+
+# 3. 安装 deb 包
+echo "安装 Grafana Enterprise..."
+sudo dpkg -i /tmp/$DEB_FILE || sudo apt-get install -f -y
+
+# 4. 启动并设置开机启动
+echo "启动 Grafana 服务..."
+sudo systemctl daemon-reload
+sudo systemctl enable grafana-server
+sudo systemctl start grafana-server
+
+echo "安装完成，Grafana 正在运行..."
+echo "默认访问：http://<你的服务器IP>:3000"
